@@ -3,38 +3,41 @@ import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 
+# ваши хэндлеры
 from handlers.start import start_cmd
 from handlers.nomination import nomination_handler
 from handlers.soundtrack import soundtrack_handler
 
 load_dotenv()
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-# Render прокидывает порт в переменную PORT
-PORT = int(os.getenv("PORT", "8443"))
+TOKEN       = os.environ["TELEGRAM_TOKEN"]
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # например "https://improvisaur-bot.onrender.com"
 
-async def error_handler(update, context):
-    # Просто логируем ошибку в stdout
+def error_handler(update, context):
+    # просто залогируем любую ошибку
     print(f"Update {update} caused error {context.error}")
 
 def main():
+    # 1) Сборка приложения
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Удаляем возможный старый webhook, чтобы не было конфликтов
+    # 2) Удаляем старый webhook (если был) и ставим новый
+    #    drop_pending_updates=True чтобы не упало кучей старых апдейтов
     app.bot.delete_webhook(drop_pending_updates=True)
+    app.bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
 
-    # Регистрируем обработчики команд
-    app.add_handler(CommandHandler("start", start_cmd))
+    # 3) Регистрируем команды
+    app.add_handler(CommandHandler("start",      start_cmd))
     app.add_handler(CommandHandler("nomination", nomination_handler))
     app.add_handler(CommandHandler("soundtrack", soundtrack_handler))
 
-    # Глобальный обработчик ошибок
+    # 4) Общий обработчик ошибок
     app.add_error_handler(error_handler)
 
-    # Запускаем long polling + health-endpoint на нужном порту
-    app.run_polling(
-        health_server=True,
-        health_server_port=PORT,
-        health_server_bind_address="0.0.0.0",
+    # 5) Запускаем встроенный webhook-сервер
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", "8443")),
+        url_path=TOKEN,
     )
 
 if __name__ == "__main__":
