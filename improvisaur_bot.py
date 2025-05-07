@@ -3,39 +3,33 @@ import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 
-# импорт ваших хэндлеров
+# Ваши асинхронные хендлеры
 from handlers.start import start_cmd
 from handlers.nomination import nomination_handler
 from handlers.soundtrack import soundtrack_handler
 
 load_dotenv()
-TOKEN       = os.environ["TELEGRAM_TOKEN"]
-WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # например "https://improvisaur-bot.onrender.com"
+TOKEN       = os.getenv("TELEGRAM_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # e.g. "https://improvisaurs-bot.onrender.com"
+PORT        = int(os.getenv("PORT", "8443"))
 
-def error_handler(update, context):
-    print(f"Update {update} caused error {context.error}")
+if not TOKEN or not WEBHOOK_URL:
+    raise RuntimeError("TELEGRAM_TOKEN и WEBHOOK_URL должны быть заданы в Environment")
 
-def main():
-    # 1) Создаём приложение с поддержкой вебхуков
-    app = ApplicationBuilder() \
-        .token(TOKEN) \
-        .webhook_url(f"{WEBHOOK_URL}/{TOKEN}") \
-        .build()
+# Собираем приложение
+app = ApplicationBuilder().token(TOKEN).build()
 
-    # 2) Регистрируем команды
-    app.add_handler(CommandHandler("start",      start_cmd))
-    app.add_handler(CommandHandler("nomination", nomination_handler))
-    app.add_handler(CommandHandler("soundtrack", soundtrack_handler))
+# Регистрируем команды
+app.add_handler(CommandHandler("start",      start_cmd))
+app.add_handler(CommandHandler("nomination", nomination_handler))
+app.add_handler(CommandHandler("soundtrack", soundtrack_handler))
 
-    # 3) Общий обработчик ошибок
-    app.add_error_handler(error_handler)
-
-    # 4) Поднимаем HTTP-сервер на $PORT и путь /<TOKEN>
+# Запускаем встроенный webhook-сервер
+if __name__ == "__main__":
     app.run_webhook(
         listen="0.0.0.0",
-        port=int(os.environ.get("PORT", "8443")),
-        url_path=TOKEN,
+        port=PORT,
+        url_path=TOKEN,                     # Telegram шлёт POST на /<TOKEN>
+        webhook_url=f"{WEBHOOK_URL}/{TOKEN}", 
+        drop_pending_updates=True,          # сбросить старые апдейты
     )
-
-if __name__ == "__main__":
-    main()
