@@ -1,3 +1,5 @@
-#!/bin/bash
-python improvisaurs_bot.py
-chmod +x start.sh
+#!/usr/bin/env bash
+set -e
+
+pip install -r requirements.txt
+python improvisaur_bot.py
