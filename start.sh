@@ -2,4 +2,4 @@
 set -e
 
 pip install -r requirements.txt
-python improvisaur_bot.py
+exec gunicorn --workers 4 --bind 0.0.0.0:$PORT improvisaur_bot:app
