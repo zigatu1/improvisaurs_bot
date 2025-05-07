@@ -2,4 +2,6 @@
 set -e
 
 pip install -r requirements.txt
-exec gunicorn --workers 4 --bind 0.0.0.0:$PORT improvisaur_bot:app
+
+# Запускаем telegram-бот на webhook-подключении через встроенный сервер
+exec python improvisaur_bot.py
