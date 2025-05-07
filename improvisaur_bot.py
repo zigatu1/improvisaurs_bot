@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 # Ваши хендлеры
 from handlers import start_cmd, nomination_handler, soundtrack_handler
 
-# Загружаем .env
 load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -17,26 +16,23 @@ if not TOKEN:
 if not RENDER_URL:
     raise RuntimeError("RENDER_EXTERNAL_URL не задан")
 
-# Строим Application
-application = (
+app = (
     ApplicationBuilder()
     .token(TOKEN)
     .build()
 )
 
-# Регистрируем хендлеры
-application.add_handler(CommandHandler("start", start_cmd))
-application.add_handler(CommandHandler("nomination", nomination_handler))
-application.add_handler(CommandHandler("soundtrack", soundtrack_handler))
+app.add_handler(CommandHandler("start", start_cmd))
+app.add_handler(CommandHandler("nomination", nomination_handler))
+app.add_handler(CommandHandler("soundtrack", soundtrack_handler))
 
-# Генерим URL для Telegram
 webhook_url = f"{RENDER_URL}/{TOKEN}"
 
 if __name__ == "__main__":
-    application.run_webhook(
-        listen="0.0.0.0",        # все интерфейсы
-        port=PORT,               # порт из Render
-        url_path=TOKEN,          # endpoint: POST /<TOKEN>
-        webhook_url=webhook_url, # полный URL для регистрации
-        drop_pending_updates=True,
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=TOKEN,
+        webhook_url=webhook_url,
+        drop_pending_updates=True,  # сбросить старые невыполненные апдейты
     )
