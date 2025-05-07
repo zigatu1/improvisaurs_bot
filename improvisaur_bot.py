@@ -1,46 +1,52 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
 import os
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+)
 
-from telegram.ext import ApplicationBuilder, CommandHandler
-from dotenv import load_dotenv
+# Импортируем ваши асинхронные хэндлеры
+from handlers.start import start_cmd
+from handlers.nomination import nomination_handler
+from handlers.soundtrack import soundtrack_handler
 
-from handlers import start_cmd, nomination_handler, soundtrack_handler
-
+# Настройка логирования
 logging.basicConfig(
     format="%(asctime)s — %(levelname)s — %(message)s",
     level=logging.INFO,
 )
 
-load_dotenv()
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-if not TOKEN:
-    raise RuntimeError("TELEGRAM_TOKEN не задан")
+async def health_check(_: Update, __: ContextTypes.DEFAULT_TYPE):
+    return  # просто “здоровый” хэндлер, если нужно
 
-PORT = int(os.getenv("PORT", 5000))
+def main():
+    token = os.getenv("TELEGRAM_TOKEN")
+    if not token:
+        logging.error("Не задана переменная TELEGRAM_TOKEN")
+        return
 
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
+    # Собираем приложение
+    app = (
+        ApplicationBuilder()
+        .token(token)
+        .concurrent_updates(True)
+        .build()
+    )
 
-def run_http_server():
-    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
-    logging.info(f"Health HTTP server on 0.0.0.0:{PORT}")
-    server.serve_forever()
+    # Регистрируем хэндлеры
+    app.add_handler(CommandHandler("start", start_cmd))
+    app.add_handler(CommandHandler("nomination", nomination_handler))
+    app.add_handler(CommandHandler("soundtrack", soundtrack_handler))
+    # (добавьте остальные)
 
-app = (
-    ApplicationBuilder()
-    .token(TOKEN)
-    .build()
-)
-app.add_handler(CommandHandler("start", start_cmd))
-app.add_handler(CommandHandler("nomination", nomination_handler))
-app.add_handler(CommandHandler("soundtrack", soundtrack_handler))
+    # Запускаем long polling
+    logging.info("Запускаем long polling…")
+    app.run_polling()
 
 if __name__ == "__main__":
-    threading.Thread(target=run_http_server, daemon=True).start()
-    logging.info("Starting long polling")
-    app.run_polling(drop_pending_updates=True)
+    main()
